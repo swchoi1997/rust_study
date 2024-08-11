@@ -1,97 +1,50 @@
-use std::ops::RangeInclusive;
-use std::thread::sleep;
-use std::time::Duration;
-use rand::Rng;
+use regex::Regex;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::io::prelude::*;
+use clap::{Arg, ArgMatches, Command};
 
-enum IpAddrKind {
-    V4,
-    V6,
+
+fn get_input_args() -> ArgMatches{
+    return Command::new("grep-lite")
+        .version("0.1.0")
+        .about("Searches for patterns")
+        .arg(Arg::new("pattern")
+            .help("The pattern to Search for ")
+            .required(true)
+            .index(1)
+        )
+        .arg(Arg::new("input")
+            .help("File To Search")
+            .required(true)
+            .index(2)
+        )
+        .get_matches();
 }
 
-struct IpAddr {
-    kind: IpAddrKind,
-    addr: String,
+
+fn process_lines<T: BufRead + Sized>(reader: T, re: Regex) {
+    for (i ,line ) in reader.lines().enumerate(){
+        let l: String = line.unwrap();
+        match re.find(&l) {
+            Some(_) => println!("line {}, => {}",i, l),
+            None => (),
+        }
+    }
 }
 
-enum ComportIpAddr {
-    V4(String),
-    V6(String),
-}
-
-enum ComportIpAddr2 {
-    V4(u8, u8, u8, u8),
-    V6(String),
-}
-
-#[derive(Debug)]
-enum Message{
-    QUIT,
-    MOVE{x : i32, y: i32},
-    WRITE(String),
-    ChangeColor(u8, u8, u8)
-
-}
 fn main() {
-    {
-        let home = IpAddr {
-            kind: IpAddrKind::V4,
-            addr: String::from("127.0.0.1"),
-        };
-    }
+    let args:ArgMatches = get_input_args();
 
-    {
-        let home = ComportIpAddr::V4(String::from("127.0.0.1"));
-        let loop_back = ComportIpAddr::V6(String::from("::1"));
-    }
+    let pattern: &String = args.get_one::<String>("pattern").unwrap();
+    let file_input: &String = args.get_one::<String>("input").unwrap();
 
-    {
-        let home = ComportIpAddr2::V4(127, 0, 0, 1);
-        let loop_back = ComportIpAddr2::V6(String::from("::1"));
-    }
+    let re: Regex = Regex::new(pattern).unwrap();
 
-    {
-        let quit: Message = Message::QUIT;
-        dbg!(&quit);
+    let f = File::open(file_input).unwrap();
 
-        let _move: Message = Message::MOVE { x: 10, y: 32 };
-        dbg!(&_move);
+    let reader = BufReader::new(f);
 
-        let write: Message = Message::WRITE(String::from("HELLO"));
-        dbg!(&write);
-
-        let change_color: Message = Message::ChangeColor(255, 255, 255);
-        dbg!(&change_color);
-    }
-
-    {
-        let dice: i32 = rand::thread_rng().gen_range(1..=6);
-        match dice {
-            1 => println!("hello {}", dice),
-            2 => println!("hello {}", dice),
-            3 => println!("hello {}", dice),
-            4 => println!("hello {}", dice),
-            5 => println!("hello {}", dice),
-            6 => println!("hello {}", dice),
-            other=> panic!("gg")
-        }
-
-        let inclusive:RangeInclusive<i32> = 1..=7;
-        loop {
-            let mut dice2: i32 = rand::thread_rng().gen_range(inclusive.clone());
-            sleep(Duration::from_millis(500));
-            match dice2 {
-                1 => println!("hello {}", dice2),
-                2 => println!("hello {}", dice2),
-                3 => println!("hello {}", dice2),
-                4 => println!("hello {}", dice2),
-                5 => println!("hello {}", dice2),
-                6 => println!("hello {}", dice2),
-                _ => {
-                    println!("QUIT {dice2} ");
-                    break;
-                },
-            }
-        }
-
-    }
+    process_lines(reader, re);
+    // cargo run hello /Users/forest_choi/RustroverProjects/grep-lite/src/hello.txt
 }
