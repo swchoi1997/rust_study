@@ -1,97 +1,111 @@
-use std::ops::RangeInclusive;
-use std::thread::sleep;
-use std::time::Duration;
-use rand::Rng;
+use std::fmt::{Display, Formatter};
 
-enum IpAddrKind {
-    V4,
-    V6,
+#[derive(Debug, PartialEq)]
+enum FileState{
+    OPEN,
+    CLOSE,
 }
 
-struct IpAddr {
-    kind: IpAddrKind,
-    addr: String,
-}
-
-enum ComportIpAddr {
-    V4(String),
-    V6(String),
-}
-
-enum ComportIpAddr2 {
-    V4(u8, u8, u8, u8),
-    V6(String),
+impl Display for FileState{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            FileState::OPEN => write!(f, "OPEN"),
+            FileState::CLOSE => write!(f, "CLOSE"),
+        }
+    }
 }
 
 #[derive(Debug)]
-enum Message{
-    QUIT,
-    MOVE{x : i32, y: i32},
-    WRITE(String),
-    ChangeColor(u8, u8, u8)
-
+struct File {
+    name: String,
+    data: Vec<u8>,
+    state: FileState,
 }
+
+impl Display for File{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<{} ({})>", self.name, self.state)
+    }
+}
+
+impl File{
+    fn new(name: &str) -> File {
+        File{
+            name: String::from(name),
+            data: Vec::new(),
+            state: FileState::CLOSE
+        }
+    }
+
+    fn read(&mut self, save_to: &mut Vec<u8>) -> Result<usize, String>{
+        if self.state != FileState::OPEN{
+            return Err(String::from("File must be open for reading"));
+        }
+
+        let mut tmp: Vec<u8> = Vec::new();
+        let mut original = self.data.clone();
+
+        let read_length: usize = original.len() + save_to.len();
+        tmp.reserve(read_length);
+        tmp.append(&mut original);
+        tmp.append(save_to);
+
+        self.data = tmp;
+
+
+        Ok(read_length)
+    }
+
+    fn open(mut self) -> Result<File, String>{
+        self.state = FileState::OPEN;
+
+        Ok(self)
+    }
+
+    fn close(mut self) -> Result<File, String>{
+        self.state = FileState::CLOSE;
+
+        Ok(self)
+    }
+}
+
 fn main() {
     {
-        let home = IpAddr {
-            kind: IpAddrKind::V4,
-            addr: String::from("127.0.0.1"),
+        let mut f1: File = File::new("t1.txt");
+
+        let mut buffer: Vec<u8> = Vec::new();
+        buffer.push(12);
+        buffer.push(13);
+        buffer.push(14);
+
+        if f1.read(&mut buffer).is_err(){
+            dbg!("Error checking is working");
+        }
+
+        f1 = match f1.open() {
+            Ok(file) => file,
+            Err(e) => {
+                panic!("Error : {:?}", e);
+            },
         };
-    }
+        println!("{:?}", f1);
+        println!("{}", f1);
 
-    {
-        let home = ComportIpAddr::V4(String::from("127.0.0.1"));
-        let loop_back = ComportIpAddr::V6(String::from("::1"));
-    }
+        let i = f1.read(&mut buffer).unwrap();
 
-    {
-        let home = ComportIpAddr2::V4(127, 0, 0, 1);
-        let loop_back = ComportIpAddr2::V6(String::from("::1"));
-    }
+        f1 = match f1.close() {
+            Ok(file) => file,
+            Err(e) => panic!("Error : {:?}", e),
+        };
 
-    {
-        let quit: Message = Message::QUIT;
-        dbg!(&quit);
+        println!("{} is {} bytes long", &f1.name, i);
 
-        let _move: Message = Message::MOVE { x: 10, y: 32 };
-        dbg!(&_move);
+        println!("------------------------------");
 
-        let write: Message = Message::WRITE(String::from("HELLO"));
-        dbg!(&write);
+        println!("{:?}", f1);
+        println!("{}", f1);
 
-        let change_color: Message = Message::ChangeColor(255, 255, 255);
-        dbg!(&change_color);
-    }
-
-    {
-        let dice: i32 = rand::thread_rng().gen_range(1..=6);
-        match dice {
-            1 => println!("hello {}", dice),
-            2 => println!("hello {}", dice),
-            3 => println!("hello {}", dice),
-            4 => println!("hello {}", dice),
-            5 => println!("hello {}", dice),
-            6 => println!("hello {}", dice),
-            other=> panic!("gg")
-        }
-
-        let inclusive:RangeInclusive<i32> = 1..=7;
-        loop {
-            let mut dice2: i32 = rand::thread_rng().gen_range(inclusive.clone());
-            sleep(Duration::from_millis(500));
-            match dice2 {
-                1 => println!("hello {}", dice2),
-                2 => println!("hello {}", dice2),
-                3 => println!("hello {}", dice2),
-                4 => println!("hello {}", dice2),
-                5 => println!("hello {}", dice2),
-                6 => println!("hello {}", dice2),
-                _ => {
-                    println!("QUIT {dice2} ");
-                    break;
-                },
-            }
-        }
 
     }
+
 }
