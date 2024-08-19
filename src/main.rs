@@ -1,111 +1,67 @@
-use std::fmt::{Display, Formatter};
+#![allow(unused_variables)]
 
-#[derive(Debug, PartialEq)]
-enum FileState{
-    OPEN,
-    CLOSE,
+type Message = String;
+
+#[derive(Debug)]
+struct Mailbox{
+    mailbox: Vec<Message>,
 }
 
-impl Display for FileState{
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            FileState::OPEN => write!(f, "OPEN"),
-            FileState::CLOSE => write!(f, "CLOSE"),
-        }
+impl Mailbox{
+    fn receive(&mut self, msg: Message) -> Result<String, String> {
+        self.mailbox.push(msg);
+
+        Ok(String::from("Success"))
     }
 }
 
 #[derive(Debug)]
-struct File {
-    name: String,
-    data: Vec<u8>,
-    state: FileState,
+struct CubeSat{
+    id: u64,
+    mailbox: Mailbox,
 }
 
-impl Display for File{
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "<{} ({})>", self.name, self.state)
-    }
-}
-
-impl File{
-    fn new(name: &str) -> File {
-        File{
-            name: String::from(name),
-            data: Vec::new(),
-            state: FileState::CLOSE
+impl CubeSat{
+    fn new(_id: u64) -> CubeSat{
+        CubeSat{
+            id: _id,
+            mailbox: Mailbox{mailbox: Vec::new()}
         }
     }
 
-    fn read(&mut self, save_to: &mut Vec<u8>) -> Result<usize, String>{
-        if self.state != FileState::OPEN{
-            return Err(String::from("File must be open for reading"));
-        }
+    fn send_message(&self, receiver: &mut CubeSat, msg: Message) -> Result<String, String>{
+        let message = format!("Send to : {} -> {}", self.id.to_string(), msg);
 
-        let mut tmp: Vec<u8> = Vec::new();
-        let mut original = self.data.clone();
-
-        let read_length: usize = original.len() + save_to.len();
-        tmp.reserve(read_length);
-        tmp.append(&mut original);
-        tmp.append(save_to);
-
-        self.data = tmp;
-
-
-        Ok(read_length)
-    }
-
-    fn open(mut self) -> Result<File, String>{
-        self.state = FileState::OPEN;
-
-        Ok(self)
-    }
-
-    fn close(mut self) -> Result<File, String>{
-        self.state = FileState::CLOSE;
-
-        Ok(self)
+        receiver.mailbox.receive(message)
     }
 }
+
+#[derive(Debug)]
+enum StatusMessage{
+    OK,
+}
+fn check_status(sat_id: CubeSat) -> CubeSat{
+    println!("{:?}: {:?}", sat_id, StatusMessage::OK);
+    sat_id
+}
+
 
 fn main() {
-    {
-        let mut f1: File = File::new("t1.txt");
-
-        let mut buffer: Vec<u8> = Vec::new();
-        buffer.push(12);
-        buffer.push(13);
-        buffer.push(14);
-
-        if f1.read(&mut buffer).is_err(){
-            dbg!("Error checking is working");
-        }
-
-        f1 = match f1.open() {
-            Ok(file) => file,
-            Err(e) => {
-                panic!("Error : {:?}", e);
-            },
-        };
-        println!("{:?}", f1);
-        println!("{}", f1);
-
-        let i = f1.read(&mut buffer).unwrap();
-
-        f1 = match f1.close() {
-            Ok(file) => file,
-            Err(e) => panic!("Error : {:?}", e),
-        };
-
-        println!("{} is {} bytes long", &f1.name, i);
-
-        println!("------------------------------");
-
-        println!("{:?}", f1);
-        println!("{}", f1);
+    let mut sat_a = CubeSat::new(100);
+    let mut sat_b = CubeSat::new(200);
+    let mut sat_c = CubeSat::new(300);
 
 
+    if sat_a.send_message(&mut sat_b, String::from("Test")).is_err(){
+        println!("ERROR")
     }
+
+    if sat_a.send_message(&mut sat_c, String::from("Test")).is_err(){
+        println!("ERROR")
+    }
+
+    dbg!(&sat_a);
+    dbg!(&sat_b);
+    dbg!(&sat_c);
 
 }
